@@ -141,6 +141,68 @@ export const getPoolsStats = async (chain: string): Promise<any> => {
     }
     return pools;
 }
+  
+export const getPoolsStats_DEX = async (chain: string): Promise<any> => {
+    var api_endpoint;
+    switch(chain) {
+        case "acala": {
+          api_endpoint = ACALA_SUBQL_DEX;
+          break;
+        }
+        default: {
+           api_endpoint = KARURA_SUBQL_DEX;
+        }
+    }
+    const QUERY_poolsByToken_DEX = gql`
+    query Pool {
+        pools {
+            nodes {
+                id
+                token0 {decimals, name}
+                token1 {decimals, name}
+                token0Amount
+                token1Amount
+                totalTVL
+                dayData(orderBy:TIMESTAMP_DESC,first:7) {
+                    nodes {
+                        timestamp
+                        totalTVL
+                        tradeVolumeUSD
+                    }
+                }
+            }
+        }
+    }
+    `;
+    console.log(api_endpoint);
+
+    const pooltest = await request(api_endpoint, QUERY_poolsByToken_DEX, { });
+    const pools = pooltest.pools.nodes;
+
+    console.log(JSON.stringify(pools));
+    interface pool_stats {
+        pool?: string;
+        TVL?: number;
+        volumeUSD_24H?: number;
+        volumeUSD_7D?: number;
+    }
+
+    var tmp;
+    for (let j = 0; j < pools.length; j++) {
+        pools[j].id = fixToken(pools[j].id);
+        tmp = pools[j].dayData.nodes
+        var acc: number = 0;
+        for (let jj = 0; jj < tmp.length; jj++) {
+            acc = acc + Number(tmp[jj].volumeUSD) / 10**18 || 0
+            if (jj == 0) {
+                pools[j].volumeUSD_24H = acc;
+            }
+        }
+        pools[j].volumeUSD_7D = acc
+
+    }
+    return pools;
+}
     
 export const getMint = async (chain: string): Promise<any> => {
     var api_endpoint;

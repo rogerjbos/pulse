@@ -1,5 +1,10 @@
+import '@polkadot/api-augment'
 const { ApiPromise, WsProvider } = require("@polkadot/api");
 const { options } = require("@acala-network/api");
+
+const { decodeAddress, encodeAddress } = require('@polkadot/keyring')
+const { hexToU8a, isHex } = require('@polkadot/util')
+
 
 const ACALA_ENDPOINTS = [
   "wss://acala-rpc-0.aca-api.network",
@@ -12,6 +17,7 @@ const KARURA_ENDPOINTS = [
   "wss://karura-rpc-1.aca-api.network",
   "wss://karura-rpc-2.aca-api.network/ws",
 ];
+
 
 const getApi = async (chainName: string) => {
     let apiOptions;
@@ -50,45 +56,32 @@ export const getPrice = async (chain: string, block: string, mytoken: string): P
 
 };
 
+export const isValidSubstrateAddress = (address: string) => {
+  try {
+    encodeAddress(isHex(address) ? hexToU8a(address) : decodeAddress(address))
+    return true
+  } catch (error) {
+    return false
+  }
+};
+
 export const getMetadatas = async (chain: string): Promise<any> => {
 
   const api = await getApi(chain);
   const ent = await api.query.assetRegistry.assetMetadatas.entries();
-
-  let b, mb, adj;
-  var out = "[";  
-  ent.forEach(([{ args: [asset] }, value]:any) => {
-
-    // format id
-    b = JSON.stringify(asset)
-    if (b.search('nativeAssetId') > 0) {
-      b = asset.value.toHuman().Token;
-    } else if (b.search('stableAssetId') > 0) {
-      b = "sa://" + asset.value.toHuman();
-    } else if (b.search('foreignAssetId') > 0) {
-      b = "fa://" + asset.value.toHuman();
-    } else {
-      b = "erc20://" + asset.value.toHuman();
-    }
-
-    // convert minimalBalance to a number
-    adj = `${value.toHuman().decimals}`;
-    adj = 10**Number(adj);
-    mb = `${value.toHuman().minimalBalance}`;
-    mb = Number(mb.replace(/,/gi,"")) / adj;
-    
-    out += `{"id": "${b}", 
-      "name": "${value.toHuman().name}", 
-      "symbol": "${value.toHuman().symbol}", 
-      "decimals": ${value.toHuman().decimals},
-      "minimalBalance": ${mb}},
-      `;
+  
+  const ent2 = ent.map((asset) => {
+    let h = asset[1].toHuman();
+    let adj = `${h.decimals}`;
+    let adj2 = 10**Number(adj);
+    let mb = `${h.minimalBalance}`;
+    let mb2 = Number(mb.replace(/,/gi,"").split("$").pop()) / adj2;
+    let j = 
+    `{"name": "${h.name}","symbol": "${h.symbol}","decimals": ${adj},"minimalBalance": ${mb2}}`;
+    return j
   });
-  out += "{}]";
-
-  let outj = JSON.parse(out);  
-  return outj;
+  
+  return ent2;
 
 }
 
-// ent.map(([{ args: [asset]}, value]) => ({ name: value.toHuman().name })

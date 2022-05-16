@@ -1,0 +1,6 @@
+{
+  "compilerOptions": {
+    // ... other properties
+    "noImplicitAny": false
+  }
+}
